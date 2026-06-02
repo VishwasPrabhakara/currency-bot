@@ -21,39 +21,10 @@ Every answer is backed by real data — CurrencyBot never guesses exchange rates
 
 ---
 
-## 🤖 Architecture
+## 🤖 Architecture ![architecture.png]
 
 ```
-User (Web UI)
-    │
-    ▼
-┌─────────────────────────────────┐
-│  Google ADK Web Interface       │
-│  (adk web --port 8000)          │
-└──────────────┬──────────────────┘
-               │
-┌──────────────▼──────────────────┐
-│  Currency Agent (Gemini 2.5)    │
-│  - Understands natural language │
-│  - Selects appropriate MCP tool │
-│  - Formats response clearly     │
-└──────────────┬──────────────────┘
-               │ MCP (stdio transport)
-┌──────────────▼──────────────────┐
-│  MCP Server (FastMCP)           │
-│  5 tools:                       │
-│  - get_exchange_rate            │
-│  - convert_currency             │
-│  - get_supported_currencies     │
-│  - get_historical_rate          │
-│  - get_rate_timeseries          │
-└──────────────┬──────────────────┘
-               │ HTTP
-┌──────────────▼──────────────────┐
-│  Frankfurter API                │
-│  (api.frankfurter.app)          │
-│  Real-time ECB exchange rates   │
-└─────────────────────────────────┘
+
 ```
 
 ---
