@@ -21,12 +21,9 @@ Every answer is backed by real data — CurrencyBot never guesses exchange rates
 
 ---
 
-## 🤖 Architecture 
-![Architecture](architecture.png)
+## 🏗️ Architecture
 
-```
-
-```
+![CurrencyBot Architecture](architecture.svg)
 
 ---
 
@@ -119,11 +116,13 @@ The agent will be live at the URL printed after deployment.
 ## 📁 Project Structure
 
 ```
-currency_project/
+currency-bot/
 ├── .env.example          # Template for environment variables
 ├── .gitignore            # Excludes .env, __pycache__, etc.
 ├── Dockerfile            # Container config for Cloud Run
 ├── requirements.txt      # Python dependencies (google-adk, mcp)
+├── architecture.svg      # Architecture diagram
+├── README.md             # This file
 └── currency_agent/
     ├── __init__.py       # Exports root_agent for ADK discovery
     ├── agent.py          # Agent definition (Gemini 2.5 Flash + MCP toolset)
