@@ -21,7 +21,8 @@ Every answer is backed by real data — CurrencyBot never guesses exchange rates
 
 ---
 
-## 🤖 Architecture ![architecture.png]
+## 🤖 Architecture 
+![Architecture](architecture.png)
 
 ```
 
