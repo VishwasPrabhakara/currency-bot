@@ -3,8 +3,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from google.adk import Agent
-from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 from mcp import StdioServerParameters
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
