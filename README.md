@@ -1,175 +1,202 @@
-# 💱 CurrencyBot — MCP-Powered Currency Exchange Agent
+# CurrencyBot
 
-> A smart currency exchange assistant powered by Google ADK, Gemini 2.5 Flash, and real-time exchange rates via MCP (Model Context Protocol).
+> A Google ADK agent that uses a local MCP server to retrieve validated daily
+> currency reference rates from Frankfurter.
 
-**Live Demo:** [https://currency-agent-381066349460.us-central1.run.app/](https://currency-agent-381066349460.us-central1.run.app/)
+[Live demo](https://currency-agent-381066349460.us-central1.run.app/) |
+[Architecture](architecture.svg) |
+[Security](SECURITY.md)
 
----
+CurrencyBot translates natural-language currency questions into MCP tool calls.
+Gemini handles intent and response formatting, while a separate stdio MCP
+process validates inputs, calls the Frankfurter v2 API, and returns structured
+rate data.
 
-## What is CurrencyBot?
+Built for the **Google Cloud Gen AI Academy APAC Edition, Track 1**.
 
-CurrencyBot is an AI-powered currency exchange assistant that fetches **real-time exchange rates** from the Frankfurter API and answers natural language queries about currencies. It's built using Google's Agent Development Kit (ADK) with Gemini 2.5 Flash as the underlying model, and exposes its data tools via the **Model Context Protocol (MCP)**.
+## What It Demonstrates
 
-Ask it anything:
-- *"What's 1 USD in INR right now?"*
-- *"Convert 5000 Japanese Yen to Euros"*
-- *"What was the USD to GBP rate on January 15, 2024?"*
-- *"Show me the EUR to INR trend over the last 3 months"*
-- *"What currencies are supported?"*
+- Google ADK agent orchestration with an MCP toolset
+- Process-isolated tools over MCP stdio transport
+- Validated external API access with bounded timeouts
+- Current, historical, conversion, currency-list, and time-series tools
+- Deterministic trend statistics over returned reference rates
+- Non-root Docker deployment to Google Cloud Run
+- Offline unit tests and GitHub Actions CI
 
-Every answer is backed by real data — CurrencyBot never guesses exchange rates.
+## Architecture
 
----
+![CurrencyBot architecture](architecture.svg)
 
-## 🏗️ Architecture
+```text
+User question
+    |
+    v
+ADK web interface
+    |
+    v
+Gemini 2.5 Flash agent
+    |
+    v
+MCPToolset (stdio)
+    |
+    v
+currency MCP server
+    |
+    +--> validation and date-range limits
+    +--> Frankfurter v2 API
+    `--> structured rate or error response
+```
 
-![CurrencyBot Architecture](architecture.svg)
+## MCP Tools
 
----
+| Tool | Purpose |
+|---|---|
+| `get_exchange_rate` | Latest available daily reference rate |
+| `convert_currency` | Amount conversion using the latest reference rate |
+| `get_supported_currencies` | Currency codes, names, and symbols |
+| `get_historical_rate` | Reference rate for a past date |
+| `get_rate_timeseries` | Up to 366 days of rates with summary statistics |
 
-## 🔧 MCP Tools
+The time-series response includes the first and last available dates, number of
+observations, minimum, maximum, average, percentage change, and direction.
 
-CurrencyBot exposes 5 tools via the Model Context Protocol:
+## Example Prompts
 
-| Tool | Description | Example Input |
-|---|---|---|
-| `get_exchange_rate` | Get the current rate between two currencies | `base: "USD", target: "INR"` |
-| `convert_currency` | Convert a specific amount using live rates | `amount: 100, base: "EUR", target: "JPY"` |
-| `get_supported_currencies` | List all supported currency codes and names | (no args) |
-| `get_historical_rate` | Get the rate for a specific past date | `date: "2024-01-15", base: "USD", target: "GBP"` |
-| `get_rate_timeseries` | Get rate history over a date range with trend analysis | `base: "EUR", target: "INR", start: "2024-01-01", end: "2024-06-30"` |
+```text
+What is the latest available USD to INR reference rate?
 
-All tools return structured JSON with status, data, and human-readable descriptions. The timeseries tool additionally returns highest, lowest, and average rates over the period.
+Convert 250 EUR to JPY.
 
----
+What was the USD to GBP rate on 2024-01-15?
 
-## 🛠️ Tech Stack
+Show the EUR to INR trend from 2024-01-01 to 2024-06-30.
 
-- **Google ADK** (`google-adk==1.14.0`) — Agent Development Kit for building AI agents with tool use
-- **Gemini 2.5 Flash** — Google's fast, capable model with reliable function calling
-- **MCP** (`mcp>=1.8.0`) — Model Context Protocol for exposing tools to the agent
-- **FastMCP** — MCP server framework for Python (stdio transport)
-- **Frankfurter API** — Free, open-source exchange rate API powered by European Central Bank data
-- **Google Cloud Run** — Serverless deployment with auto-scaling
-- **Docker** — Containerized for consistent deployment
+Which currencies are supported?
+```
 
----
+## Data Semantics
 
-## 🚀 Run Locally
+Frankfurter v2 aggregates daily exchange-rate data from central banks and other
+official providers. These values are reference rates:
 
-### Prerequisites
+- They are not live, tick-level, bank, card, or broker quotes.
+- Weekends and holidays may resolve to the latest available observation.
+- Currency conversion results exclude spreads, commissions, taxes, and fees.
+- Trend summaries describe historical movement and are not forecasts.
+
+Do not use CurrencyBot as financial advice or as the sole source for executing
+a transaction.
+
+## Run Locally
+
+Requirements:
+
 - Python 3.11+
-- A Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey)
+- Gemini API credentials from
+  [Google AI Studio](https://aistudio.google.com/apikey)
 
-### Setup
-
-```bash
-# Clone the repo
+```powershell
 git clone https://github.com/VishwasPrabhakara/currency-bot.git
 cd currency-bot
 
-# Install dependencies
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 
-# Create your .env file
-cp .env.example .env
-# Edit .env and add your real Gemini API key
+Copy-Item .env.example .env
+# Add GOOGLE_API_KEY to .env
 
-# Run the agent
-adk web --port 8000 --host 0.0.0.0 .
+adk web --port 8000 --host 127.0.0.1 agents
 ```
 
-Open **http://localhost:8000** in your browser. Start asking about currencies!
+Open `http://127.0.0.1:8000`. The ADK web UI is a development and demonstration
+surface, not an authenticated production frontend.
 
-### Example Queries to Try
+## Tests
 
-```
-What is 1 USD in INR?
-Convert 250 EUR to Japanese Yen
-What was the dollar to pound rate on March 1, 2024?
-Show me the USD to EUR trend from January to June 2024
-What currencies are supported?
-```
+The automated tests mock network responses and do not call Gemini or
+Frankfurter:
 
----
-
-## 🐳 Deploy to Cloud Run
-
-```bash
-# Set your project
-gcloud config set project YOUR_PROJECT_ID
-
-# Deploy from source
-gcloud run deploy currency-agent \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars GOOGLE_API_KEY=your_key_here,GOOGLE_GENAI_USE_VERTEXAI=FALSE \
-  --memory 512Mi \
-  --timeout 300
+```powershell
+pip install -r requirements-dev.txt
+pytest
 ```
 
-The agent will be live at the URL printed after deployment.
+They cover validation, conversion math, date bounds, same-currency requests,
+time-series statistics, safe upstream errors, agent registration, and MCP
+subprocess configuration.
 
----
+The suite does not measure Gemini's final-answer quality or tool-selection
+accuracy. No model evaluation scores are claimed.
 
-## 📁 Project Structure
+## Docker
 
+```powershell
+docker build -t currency-bot .
+docker run --rm -p 8080:8080 --env-file .env currency-bot
 ```
+
+The image does not copy `.env`, runs as a non-root user, and respects Cloud
+Run's `PORT` variable.
+
+## Cloud Run
+
+Deploy the agent with ADK:
+
+```powershell
+adk deploy cloud_run `
+  --project=YOUR_PROJECT_ID `
+  --region=us-central1 `
+  --service_name=currency-agent `
+  --with_ui `
+  agents/currency_agent
+```
+
+Configure `GOOGLE_API_KEY` and `GOOGLE_GENAI_USE_VERTEXAI=FALSE` through Cloud
+Run environment configuration or Secret Manager. Do not pass credentials in a
+committed file or bake them into the container image.
+
+Google documents `--with_ui` as a development/testing interface. Add
+authentication, rate limiting, monitoring, and a dedicated frontend before
+using this service for sensitive or unrestricted public traffic.
+
+## Limitations
+
+- The upstream API can be unavailable or have missing dates.
+- Three-letter syntax validation does not prove a currency is supported; the
+  provider remains the source of truth.
+- Time-series requests are limited to 366 days to bound response size.
+- The app has no application-level user authentication or persistent sessions.
+- The live demo can have a Cloud Run cold-start delay.
+
+## Project Structure
+
+```text
 currency-bot/
-├── .env.example          # Template for environment variables
-├── .gitignore            # Excludes .env, __pycache__, etc.
-├── Dockerfile            # Container config for Cloud Run
-├── requirements.txt      # Python dependencies (google-adk, mcp)
-├── architecture.svg      # Architecture diagram
-├── README.md             # This file
-└── currency_agent/
-    ├── __init__.py       # Exports root_agent for ADK discovery
-    ├── agent.py          # Agent definition (Gemini 2.5 Flash + MCP toolset)
-    └── mcp_server.py     # MCP server with 5 currency tools (Frankfurter API)
+|-- .github/workflows/tests.yml
+|-- agents/
+|   `-- currency_agent/
+|       |-- __init__.py
+|       |-- agent.py
+|       `-- mcp_server.py
+|-- tests/
+|-- .env.example
+|-- architecture.svg
+|-- Dockerfile
+|-- requirements.txt
+|-- requirements-dev.txt
+`-- SECURITY.md
 ```
 
----
+## Author
 
-## 🔑 Environment Variables
+**Vishwas Prabhakara**
 
-| Variable | Description | Required |
-|---|---|---|
-| `GOOGLE_API_KEY` | Your Gemini API key from Google AI Studio | Yes |
-| `GOOGLE_GENAI_USE_VERTEXAI` | Set to `FALSE` for API key auth (vs Vertex AI) | Yes |
+[GitHub](https://github.com/VishwasPrabhakara) |
+[LinkedIn](https://www.linkedin.com/in/vishwas-prabhakara)
 
----
+## License
 
-## 💡 How It Works
-
-1. **User sends a natural language query** via the ADK web interface
-2. **Gemini 2.5 Flash** interprets the query and selects the appropriate MCP tool
-3. **The MCP server** receives the tool call via stdio transport and hits the Frankfurter API
-4. **Real exchange rate data** is returned as structured JSON
-5. **Gemini formats the response** into a clear, human-readable answer with the rate, date, and context
-
-The agent never guesses rates — every number comes from a real API call to the European Central Bank's published rates via Frankfurter.
-
----
-
-## 🌍 Supported Currencies
-
-CurrencyBot supports 30+ currencies via the Frankfurter API, including:
-
-AUD, BGN, BRL, CAD, CHF, CNY, CZK, DKK, EUR, GBP, HKD, HRK, HUF, IDR, ILS, INR, ISK, JPY, KRW, MXN, MYR, NOK, NZD, PHP, PLN, RON, SEK, SGD, THB, TRY, USD, ZAR
-
-For the full list with names, ask the bot: *"What currencies are supported?"*
-
----
-
-## 📝 Built For
-
-Google Cloud Gen AI Academy APAC Edition — Track 1 Submission
-
-**Built by:** Vishwas Prabhakara
-
----
-
-## 📄 License
-
-MIT
+[MIT](LICENSE)
