@@ -180,7 +180,8 @@ currency-bot/
 |   `-- currency_agent/
 |       |-- __init__.py
 |       |-- agent.py
-|       `-- mcp_server.py
+|       |-- mcp_server.py
+|       `-- requirements.txt
 |-- tests/
 |-- .env.example
 |-- architecture.svg
